@@ -12,7 +12,7 @@ app.get('/animeList', async (req, res) => {
     try {
         const page = req.query.page || 1;
         // تغییر سورس به یک دامنه فعال دیگر برای دور زدن محدودیت
-        const targetUrl = `https://gogoanime.uk.com/anime-list.html?page=${page}`;
+        const targetUrl = `https://www.enma.lol/subbed-anime?page=${page}`;
         
         const { data } = await axios.get(targetUrl, {
             headers: { 
