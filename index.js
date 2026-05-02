@@ -10,35 +10,35 @@ app.use((req, res, next) => {
 app.get('/animeList', async (req, res) => {
     try {
         const page = req.query.page || 1;
-        
-        // استفاده از یک میرور پایدار و تست شده که دچار DMCA نشده است
-        const targetUrl = `https://consumet-api-production-e633.up.railway.app/anime/gogoanime/top-airing?page=${page}`;
+        // استفاده از ای‌پی‌آی قدرتمند Jikan که مسدود نمی‌شود
+        const response = await axios.get(`https://api.jikan.moe/v4/top/anime`, {
+            params: {
+                page: page,
+                limit: 20
+            }
+        });
 
-        const response = await axios.get(targetUrl, { timeout: 8000 });
-        const results = response.data.results || [];
+        const results = response.data.data || [];
 
-        if (results.length > 0) {
-            const animeList = results.map(anime => ({
-                animeTitle: anime.title,
-                animeId: anime.id,
-                liTitle: anime.genres ? anime.genres.slice(0, 2).join(', ') : "Trending"
-            }));
-            return res.json(animeList);
-        }
-        
-        throw new Error("Empty Results");
+        // تبدیل به فرمتی که در پیام قبلی فرستادی
+        const animeList = results.map(anime => ({
+            animeTitle: anime.title_english || anime.title,
+            animeId: anime.mal_id, // آیدی عددی (پایدارترین حالت)
+            liTitle: anime.genres.length > 0 ? anime.genres[0].name : "Anime"
+        }));
+
+        res.json(animeList);
 
     } catch (error) {
-        // دیتای جایگزین (Fallback) در صورت قطعی موقت ای‌پی‌آی
+        // دیتای تستی فقط برای زمانی که اینترنت سرور قطع باشد
         res.json([
             { animeTitle: "One Piece", animeId: "one-piece", liTitle: "Action" },
             { animeTitle: "Naruto Shippuden", animeId: "naruto-shippuden", liTitle: "Adventure" },
-            { animeTitle: "Jujutsu Kaisen", animeId: "jujutsu-kaisen-2nd-season", liTitle: "Fantasy" },
-            { animeTitle: "Bleach", animeId: "bleach", liTitle: "Shounen" }
+            { animeTitle: "Jujutsu Kaisen", animeId: "jujutsu-kaisen", liTitle: "Fantasy" }
         ]);
     }
 });
 
-app.get('/', (req, res) => res.send('Anime API Bridge is Running'));
+app.get('/', (req, res) => res.send('Anime Bridge is Active'));
 
 module.exports = app;
