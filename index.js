@@ -8,52 +8,33 @@ app.use((req, res, next) => {
 });
 
 app.get('/animeList', async (req, res) => {
-    const page = req.query.page || 1;
-    const apiKey = '748d416499mshbb161b48db61a5dp1eb23cjsn80a9f87dbc23';
-    const apiHost = 'gogoanime2.p.rapidapi.com';
-
-    // لیست اولویت‌بندی شده مسیرها (اگر اولی 502 داد، دومی را تست می‌کند)
-    const endpoints = [
-        `https://${apiHost}/top-airing`,
-        `https://${apiHost}/recent-release`,
-        `https://${apiHost}/popular`
-    ];
-
-    for (let url of endpoints) {
-        try {
-            const response = await axios.get(url, {
-                params: { page: page },
-                headers: {
-                    'x-rapidapi-key': apiKey,
-                    'x-rapidapi-host': apiHost
-                },
-                timeout: 5000 // ۵ ثانیه صبر برای هر سرویس
-            });
-
-            const results = Array.isArray(response.data) ? response.data : (response.data.results || []);
-
-            if (results.length > 0) {
-                const animeList = results.map(anime => ({
-                    animeTitle: anime.animeTitle || anime.title || "Unknown",
-                    animeId: anime.animeId || anime.id || "#",
-                    liTitle: anime.latestEp || (anime.episodeNum ? `Episode ${anime.episodeNum}` : "Anime")
-                }));
-                return res.json(animeList);
+    try {
+        const page = req.query.page || 1;
+        // فراخوانی لیست محبوب‌ترین انیمه‌های در حال پخش از Jikan
+        const response = await axios.get(`https://api.jikan.moe/v4/top/anime`, {
+            params: {
+                page: page,
+                filter: 'airing', // فقط انیمه‌هایی که در حال پخش هستند
+                limit: 25 // تعداد انیمه در هر صفحه
             }
-        } catch (error) {
-            console.log(`Failed to fetch from ${url}: ${error.message}`);
-            continue; // برو سراغ مسیر بعدی
-        }
-    }
+        });
+        
+        const results = response.data.data || [];
 
-    // اگر تمام مسیرها با شکست مواجه شدند (دیتای تستی برای اینکه سایت خالی نماند)
-    res.json([
-        { animeTitle: "One Piece", animeId: "one-piece", liTitle: "Popular" },
-        { animeTitle: "Naruto Shippuden", animeId: "naruto-shippuden", liTitle: "Classic" },
-        { animeTitle: "Service Maintenance", animeId: "#", liTitle: "Try again later" }
-    ]);
+        // تبدیل داده‌های Jikan به فرمت استاندارد سایت شما
+        const animeList = results.map(anime => ({
+            animeTitle: anime.title_english || anime.title, // اولویت با اسم انگلیسی
+            animeId: anime.mal_id, // آیدی عددی انیمه در MyAnimeList
+            liTitle: `${anime.type} | Score: ${anime.score || 'N/A'}`
+        }));
+
+        res.json(animeList);
+    } catch (error) {
+        console.error("Jikan API Error:", error.message);
+        res.status(500).json([{ animeTitle: "Service Temporarily Busy", animeId: "#", liTitle: "Please refresh" }]);
+    }
 });
 
-app.get('/', (req, res) => res.send('API Bridge is working'));
+app.get('/', (req, res) => res.send('Jikan API Bridge is Online'));
 
 module.exports = app;
